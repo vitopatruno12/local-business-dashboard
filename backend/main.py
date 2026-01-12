@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
