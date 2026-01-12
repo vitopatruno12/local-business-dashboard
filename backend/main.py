@@ -125,12 +125,13 @@ def build_message_text(name: str, city: str, category: str) -> str:
         f"la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n"
         f"Sono disponibile per un colloquio senza impegno.\n"
         f"Zona: {zona} • Categoria: {cat}\n"
-        f"Buona giornata 🙂"
+        f"Un cordiale saluto 🙂"
     )
 
 
-@app.get("/message-template")
-def message_template(
+# ✅ QUESTO È L’ENDPOINT CHE IL FRONTEND STA CHIAMANDO (/message)
+@app.get("/message")
+def message(
     name: str = Query("", description="Nome attività"),
     city: str = Query("", description="Città/Provincia"),
     category: str = Query("", description="Categoria"),
@@ -139,6 +140,16 @@ def message_template(
     Ritorna il testo WhatsApp generato dal backend.
     Così puoi modificarlo qui e non rifare build del frontend.
     """
+    return {"text": build_message_text(name=name, city=city, category=category)}
+
+
+# ✅ Alias (se in passato usavi /message-template)
+@app.get("/message-template")
+def message_template(
+    name: str = Query("", description="Nome attività"),
+    city: str = Query("", description="Città/Provincia"),
+    category: str = Query("", description="Categoria"),
+) -> Dict[str, str]:
     return {"text": build_message_text(name=name, city=city, category=category)}
 
 
