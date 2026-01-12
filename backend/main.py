@@ -22,8 +22,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://stately-chaja-af2f33.netlify.app",
-        "https://stately-chaja-af2f33.netlify.app",  # ✅ aggiunto https
+        
+        "https://courageous-pony-cf2798.netlify.app/",  # ✅ aggiunto https
     ],
     allow_credentials=True,
     allow_methods=["*"],
