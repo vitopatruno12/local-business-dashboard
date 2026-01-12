@@ -22,9 +22,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        
-        "https://melodious-babka-9d2a07.netlify.app/",  # ✅ aggiunto https
+        "https://melodious-babka-9d2a07.netlify.app",
+        # se hai anche un altro URL netlify aggiungilo qui
     ],
+    allow_origin_regex=r"^https://.*\.netlify\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
