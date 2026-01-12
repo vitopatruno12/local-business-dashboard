@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://local-business-dashboard-602f.onrender.com/"
 
 function getGreetingWithTitle() {
   const hour = new Date().getHours();
