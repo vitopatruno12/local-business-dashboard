@@ -117,15 +117,16 @@ def build_message_text(name: str, city: str, category: str) -> str:
     saluto = get_greeting_with_title()
 
     return (
-        f"{saluto},\n"
-        f"ho visto {nome} su Google Maps e vi contatto perché una buona visibilità online "
-        f"contribuisce in modo diretto ad attirare nuovi clienti.\n\n"
-        f"Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page "
-        f"fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare "
-        f"la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n"
-        f"Sono disponibile per un colloquio senza impegno.\n"
-        f"Zona: {zona} • Categoria: {cat}\n"
-        f"Un cordiale saluto 🙂"
+           f"{saluto},\n"
+    f"ho visto {nome} su Google Maps e vi contatto perché oggi una buona visibilità online "
+    f"fa spesso la differenza nella scelta dei clienti.\n\n"
+    f"Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page "
+    f"fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare "
+    f"la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n"
+    f"Se lo ritenete utile, sono disponibile per un breve confronto conoscitivo, "
+    f"anche solo per valutare eventuali opportunità.\n"
+    f"Zona: {zona} • Categoria: {cat}\n"
+    f"Un cordiale saluto 🙂"
     )
 
 
