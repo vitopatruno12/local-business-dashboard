@@ -45,6 +45,11 @@ export default function App() {
   const [rawText, setRawText] = useState("");
   const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
 
+  // ✅ DEBUG message endpoint
+  const [lastMsgUrl, setLastMsgUrl] = useState("");
+  const [msgHttpInfo, setMsgHttpInfo] = useState({ status: null, contentType: "" });
+  const [msgRawText, setMsgRawText] = useState("");
+
   useEffect(() => {
     (async () => {
       try {
@@ -167,32 +172,45 @@ export default function App() {
 
   // ✅ Prende il messaggio dal BACKEND (così non rebuildi il frontend quando cambi testo)
   async function fetchMessageFromBackend(place) {
+    // reset debug message
+    setLastMsgUrl("");
+    setMsgHttpInfo({ status: null, contentType: "" });
+    setMsgRawText("");
+
     const qs = new URLSearchParams({
       name: place?.name || "",
       city: city.trim(),
       category: category.trim().toLowerCase(),
     });
 
-    // 🔁 Se il tuo endpoint ha un altro nome, cambia solo qui:
     const url = `${API_BASE}/message?${qs.toString()}`;
+    setLastMsgUrl(url);
 
     const res = await fetch(url);
+
+    const contentType = res.headers.get("content-type") || "";
+    setMsgHttpInfo({ status: res.status, contentType });
+
     const text = await res.text();
+    setMsgRawText(text);
 
     if (!res.ok) throw new Error(`Errore messaggio: ${res.status} ${text}`);
 
-    // può essere plain text oppure {"message":"..."}
+    // ✅ backend ritorna {"text":"..."}
     try {
       const j = JSON.parse(text);
-      if (j && typeof j === "object" && typeof j.message === "string") return j.message;
+      if (j && typeof j === "object" && typeof j.text === "string") return j.text;
+      if (j && typeof j === "object" && typeof j.message === "string") return j.message; // fallback vecchio
     } catch {
-      // era testo semplice
+      // non era JSON
     }
+
+    // fallback: testo puro
     return text;
   }
 
   function openWhatsApp(place, messageOverride) {
-    const msg = messageOverride ?? draft ?? "";
+    const msg = (messageOverride ?? draft ?? "").trim();
     const url = buildWhatsAppUrl(place?.phone, msg);
 
     if (!url) {
@@ -200,7 +218,7 @@ export default function App() {
       return;
     }
 
-    if (!msg.trim()) {
+    if (!msg) {
       alert("Prima genera il messaggio (o scrivilo nella textarea).");
       return;
     }
@@ -329,7 +347,7 @@ export default function App() {
 
       {/* MAIN */}
       <main className="container-xl main-grid">
-        {/* LEFT: FILTERS */}
+        {/* LEFT */}
         <aside className="cardx">
           <div className="cardx-head">
             <div>
@@ -373,7 +391,7 @@ export default function App() {
           </form>
         </aside>
 
-        {/* RIGHT: RESULTS + DRAFT */}
+        {/* RIGHT */}
         <section className="cardx">
           <div className="cardx-head split">
             <div>
@@ -451,57 +469,20 @@ export default function App() {
                 <div style={{ fontWeight: 800, marginBottom: 6 }}>DEBUG</div>
 
                 <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>
-                  <div>
-                    <b>Last URL:</b> {lastUrl || "—"}
+                  <div><b>Last SEARCH URL:</b> {lastUrl || "—"}</div>
+                  <div><b>SEARCH status:</b> {httpInfo.status ?? "—"} • <b>CT:</b> {httpInfo.contentType || "—"}</div>
+
+                  <div style={{ marginTop: 8 }}>
+                    <b>Last MESSAGE URL:</b> {lastMsgUrl || "—"}
                   </div>
                   <div>
-                    <b>HTTP status:</b> {httpInfo.status ?? "—"}
-                  </div>
-                  <div>
-                    <b>Content-Type:</b> {httpInfo.contentType || "—"}
-                  </div>
-                  <div>
-                    <b>results.length:</b> {results.length}
-                  </div>
-                  <div>
-                    <b>raw type:</b> {raw === null ? "null" : Array.isArray(raw) ? "array" : typeof raw}
+                    <b>MESSAGE status:</b> {msgHttpInfo.status ?? "—"} • <b>CT:</b> {msgHttpInfo.contentType || "—"}
                   </div>
                 </div>
 
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>RAW TEXT (risposta server)</div>
-
-                <pre
-                  style={{
-                    margin: "0 0 8px 0",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: 12,
-                    opacity: 0.9,
-                    maxHeight: 200,
-                    overflow: "auto",
-                    background: "#111",
-                    color: "#0f0",
-                    padding: 8,
-                    borderRadius: 6,
-                  }}
-                >
-                  {rawText || "—"}
-                </pre>
-
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>PARSED JSON</div>
-
-                <pre
-                  style={{
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: 12,
-                    opacity: 0.9,
-                    maxHeight: 200,
-                    overflow: "auto",
-                  }}
-                >
-                  {raw === null ? "—" : JSON.stringify(raw, null, 2)}
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>MESSAGE RAW TEXT</div>
+                <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12, maxHeight: 160, overflow: "auto" }}>
+                  {msgRawText || "—"}
                 </pre>
               </div>
             </div>
@@ -515,9 +496,7 @@ export default function App() {
               <div className="cardx-title sm">Bozza WhatsApp</div>
               <div className="cardx-sub">
                 {selected ? (
-                  <>
-                    Per: <b>{selected.name}</b>
-                  </>
+                  <>Per: <b>{selected.name}</b></>
                 ) : (
                   "Seleziona un’attività e clicca “Genera”."
                 )}
