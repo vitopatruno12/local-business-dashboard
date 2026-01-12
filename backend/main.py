@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -15,13 +16,14 @@ load_dotenv()
 
 app = FastAPI(title="Local Business Finder API")
 
-# ✅ CORS per React (CRA su 3000)
+# ✅ CORS per React (CRA su 3000 + Netlify)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://stately-chaja-af2f33.netlify.app"
+        "http://stately-chaja-af2f33.netlify.app",
+        "https://stately-chaja-af2f33.netlify.app",  # ✅ aggiunto https
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -77,6 +79,12 @@ class StatusPatch(BaseModel):
 @app.get("/")
 def root():
     return {"status": "ok"}
+
+
+# ✅ Fix Render: Render fa HEAD / per health-check → evitiamo 405
+@app.head("/")
+def head_root():
+    return Response(status_code=200)
 
 
 @app.get("/health")
@@ -192,7 +200,7 @@ def search(
 
     print("GOOGLE status:", status, "| error:", err, "| n:", n)
 
-    # ✅ QUI la differenza: se Google non è OK, non torniamo [] in silenzio
+    # ✅ se Google non è OK, non torniamo [] in silenzio
     if status != "OK":
         raise HTTPException(
             status_code=400,
@@ -234,7 +242,6 @@ def search(
         )
 
     return enriched
-
 
 
 # ✅ LEADS: salva, lista, aggiorna stato
