@@ -4,45 +4,12 @@ import "./App.css";
 const API_BASE = "https://local-business-dashboard-602f.onrender.com"; // ✅ niente slash finale
 const DEBUG = true; // ✅ metti false quando hai finito
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return "Buongiorno";
-  if (hour >= 12 && hour < 18) return "Buon pomeriggio";
-  return "Buonasera";
-}
-
-function getTitle() {
-  // ✅ niente random per evitare bozza “che cambia”
-  return "Spett.le Ditta";
-  // alternativa: "Gentile Titolare"
-}
-
-function buildDraft(place, city, category) {
-  const nome = place?.name ?? "la vostra attività";
-  const zona = city?.trim() || "la tua zona";
-  const cat = category?.trim() || "attività";
-
-  const saluto = `${getGreeting()} ${getTitle()}`;
-
-  return (
-    `${saluto},\n` +
-    `ho visto ${nome} su Google Maps e vi contatto perché una buona visibilità online contribuisce in modo diretto ad attirare nuovi clienti.\n\n` +
-    `Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n` +
-    `Zona: ${zona} • Categoria: ${cat}\n` +
-    `Un saluto 🙂`
-  );
-}
-
 function normalizePhoneToWa(phone) {
   if (!phone) return null;
 
   let digits = String(phone).replace(/[^\d]/g, "");
-
   if (digits.startsWith("00")) digits = digits.slice(2);
-
-  if (digits.length === 10 && !digits.startsWith("39")) {
-    digits = "39" + digits;
-  }
+  if (digits.length === 10 && !digits.startsWith("39")) digits = "39" + digits;
 
   return digits.length >= 8 ? digits : null;
 }
@@ -125,9 +92,7 @@ export default function App() {
       const text = await res.text();
       setRawText(text);
 
-      if (!res.ok) {
-        throw new Error(`Errore API: ${res.status} ${text}`);
-      }
+      if (!res.ok) throw new Error(`Errore API: ${res.status} ${text}`);
 
       let data;
       try {
@@ -200,12 +165,43 @@ export default function App() {
     return await res.json();
   }
 
+  // ✅ Prende il messaggio dal BACKEND (così non rebuildi il frontend quando cambi testo)
+  async function fetchMessageFromBackend(place) {
+    const qs = new URLSearchParams({
+      name: place?.name || "",
+      city: city.trim(),
+      category: category.trim().toLowerCase(),
+    });
+
+    // 🔁 Se il tuo endpoint ha un altro nome, cambia solo qui:
+    const url = `${API_BASE}/message?${qs.toString()}`;
+
+    const res = await fetch(url);
+    const text = await res.text();
+
+    if (!res.ok) throw new Error(`Errore messaggio: ${res.status} ${text}`);
+
+    // può essere plain text oppure {"message":"..."}
+    try {
+      const j = JSON.parse(text);
+      if (j && typeof j === "object" && typeof j.message === "string") return j.message;
+    } catch {
+      // era testo semplice
+    }
+    return text;
+  }
+
   function openWhatsApp(place, messageOverride) {
-    const msg = messageOverride ?? draft ?? buildDraft(place, city, category);
+    const msg = messageOverride ?? draft ?? "";
     const url = buildWhatsAppUrl(place?.phone, msg);
 
     if (!url) {
       alert("Numero WhatsApp non valido o mancante per questa attività.");
+      return;
+    }
+
+    if (!msg.trim()) {
+      alert("Prima genera il messaggio (o scrivilo nella textarea).");
       return;
     }
 
@@ -215,18 +211,17 @@ export default function App() {
   async function handleGenerateMessage(place) {
     setError("");
     setSelected(place);
-
-    const message = buildDraft(place, city, category);
-    setDraft(message);
-
     setSelectedLeadId(null);
 
     setSavingLead(true);
     try {
+      const message = await fetchMessageFromBackend(place);
+      setDraft(message);
+
       const leadId = await saveLead(place);
       setSelectedLeadId(leadId);
     } catch (err) {
-      setError(err?.message || "Errore salvataggio lead");
+      setError(err?.message || "Errore generazione/salvataggio lead");
     } finally {
       setSavingLead(false);
     }
@@ -235,18 +230,19 @@ export default function App() {
   async function handleGenerateAndOpenWhatsApp(place) {
     setError("");
     setSelected(place);
-
-    const message = buildDraft(place, city, category);
-    setDraft(message);
     setSelectedLeadId(null);
 
     setSavingLead(true);
     try {
+      const message = await fetchMessageFromBackend(place);
+      setDraft(message);
+
       const leadId = await saveLead(place);
       setSelectedLeadId(leadId);
+
       openWhatsApp(place, message);
     } catch (err) {
-      setError(err?.message || "Errore salvataggio lead");
+      setError(err?.message || "Errore generazione/salvataggio lead");
     } finally {
       setSavingLead(false);
     }
@@ -556,7 +552,7 @@ export default function App() {
               className="btnx success"
               disabled={!selected || !selected.phone}
               title={!selected?.phone ? "Seleziona un’attività con telefono" : "Apri WhatsApp con il testo attuale"}
-              onClick={() => openWhatsApp(selected)}
+              onClick={() => openWhatsApp(selected, draft)}
             >
               💬 Apri WhatsApp
             </button>

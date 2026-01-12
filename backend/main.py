@@ -1,5 +1,6 @@
 import os
-from typing import Optional, List
+from datetime import datetime
+from typing import Optional, List, Dict
 from urllib.parse import urlparse
 
 import requests
@@ -16,15 +17,9 @@ load_dotenv()
 
 app = FastAPI(title="Local Business Finder API")
 
-# ✅ CORS per React (CRA su 3000 + Netlify)
+# ✅ CORS: permette tutte le preview / deploy netlify + localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://melodious-babka-9d2a07.netlify.app",
-        # se hai anche un altro URL netlify aggiungilo qui
-    ],
     allow_origin_regex=r"^https://.*\.netlify\.app$",
     allow_credentials=True,
     allow_methods=["*"],
@@ -92,6 +87,64 @@ def head_root():
 def health():
     return {"ok": True, "has_google_key": bool(GOOGLE_API_KEY)}
 
+
+# ==========================
+# MESSAGE TEMPLATE (EDITABILE)
+# ==========================
+
+def get_greeting_with_title() -> str:
+    hour = datetime.now().hour
+
+    if 5 <= hour < 12:
+        greeting = "Buongiorno"
+    elif 12 <= hour < 18:
+        greeting = "Buon pomeriggio"
+    else:
+        greeting = "Buonasera"
+
+    # ✅ stile fisso professionale
+    title = "Spett.le Ditta"
+    # alternativa:
+    # title = "Gentile Titolare"
+
+    return f"{greeting} {title}"
+
+
+def build_message_text(name: str, city: str, category: str) -> str:
+    nome = (name or "").strip() or "la vostra attività"
+    zona = (city or "").strip() or "la tua zona"
+    cat = (category or "").strip() or "attività"
+    saluto = get_greeting_with_title()
+
+    return (
+        f"{saluto},\n"
+        f"ho visto {nome} su Google Maps e vi contatto perché una buona visibilità online "
+        f"contribuisce in modo diretto ad attirare nuovi clienti.\n\n"
+        f"Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page "
+        f"fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare "
+        f"la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n"
+        f"Sono disponibile per un colloquio senza impegno.\n"
+        f"Zona: {zona} • Categoria: {cat}\n"
+        f"Buona giornata 🙂"
+    )
+
+
+@app.get("/message-template")
+def message_template(
+    name: str = Query("", description="Nome attività"),
+    city: str = Query("", description="Città/Provincia"),
+    category: str = Query("", description="Categoria"),
+) -> Dict[str, str]:
+    """
+    Ritorna il testo WhatsApp generato dal backend.
+    Così puoi modificarlo qui e non rifare build del frontend.
+    """
+    return {"text": build_message_text(name=name, city=city, category=category)}
+
+
+# ==========================
+# GOOGLE PLACES
+# ==========================
 
 def places_text_search(query: str, region: str = "it") -> dict:
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
@@ -213,7 +266,6 @@ def search(
         )
 
     results = (base.get("results") or [])[:limit]
-
     enriched: List[PlaceOut] = []
 
     for r in results:
@@ -245,7 +297,9 @@ def search(
     return enriched
 
 
-# ✅ LEADS: salva, lista, aggiorna stato
+# ==========================
+# LEADS
+# ==========================
 
 @app.post("/leads", response_model=int)
 def save_lead(lead: LeadIn):
