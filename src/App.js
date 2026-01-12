@@ -1,55 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const API_BASE = "https://local-business-dashboard-602f.onrender.com"
+const API_BASE = "https://local-business-dashboard-602f.onrender.com"; // ✅ niente slash finale
+const DEBUG = true; // ✅ metti false quando hai finito
 
-function getGreetingWithTitle() {
+function getGreeting() {
   const hour = new Date().getHours();
-  let greeting = "Buonasera";
+  if (hour >= 5 && hour < 12) return "Buongiorno";
+  if (hour >= 12 && hour < 18) return "Buon pomeriggio";
+  return "Buonasera";
+}
 
-  if (hour >= 5 && hour < 12) greeting = "Buongiorno";
-  else if (hour >= 12 && hour < 18) greeting = "Buon pomeriggio";
-
-  // puoi cambiarlo facilmente se preferisci sempre uno solo
-  const titles = ["Spett.le Ditta", "Gentile Titolare"];
-  const title = titles[Math.floor(Math.random() * titles.length)];
-
-  return `${greeting} ${title}`;
+function getTitle() {
+  // ✅ niente random per evitare bozza “che cambia”
+  return "Spett.le Ditta";
+  // alternativa: "Gentile Titolare"
 }
 
 function buildDraft(place, city, category) {
   const nome = place?.name ?? "la vostra attività";
   const zona = city?.trim() || "la tua zona";
   const cat = category?.trim() || "attività";
-  const saluto = getGreetingWithTitle();
+
+  const saluto = `${getGreeting()} ${getTitle()}`;
 
   return (
     `${saluto},\n` +
-`ho visto ${nome} su Google Maps e vi contatto perché una buona visibilità online ` +
-`contribuisce in modo diretto ad attirare nuovi clienti.\n\n` +
-`Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page ` +
-`fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare ` +
-`la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n` +
-`Zona: ${zona} • Categoria: ${cat}\n` +
-`Un saluto 🙂`
+    `ho visto ${nome} su Google Maps e vi contatto perché una buona visibilità online contribuisce in modo diretto ad attirare nuovi clienti.\n\n` +
+    `Mi occupo di soluzioni digitali per il mercato locale, dai siti web e landing page fino ad applicazioni mobile e altre soluzioni tecnologiche, pensate per migliorare la visibilità e facilitare il contatto con i clienti, senza complicazioni.\n\n` +
+    `Zona: ${zona} • Categoria: ${cat}\n` +
+    `Un saluto 🙂`
   );
 }
 
 function normalizePhoneToWa(phone) {
   if (!phone) return null;
 
-  // Togli tutto tranne numeri
   let digits = String(phone).replace(/[^\d]/g, "");
 
-  // Se inizia con 00 (es 0039) -> diventa 39...
   if (digits.startsWith("00")) digits = digits.slice(2);
 
-  // Se è numero IT senza prefisso (es 328...), aggiungi 39
   if (digits.length === 10 && !digits.startsWith("39")) {
     digits = "39" + digits;
   }
 
-  // WhatsApp richiede formato internazionale SENZA +
   return digits.length >= 8 ? digits : null;
 }
 
@@ -81,9 +75,8 @@ export default function App() {
   // ✅ DEBUG
   const [lastUrl, setLastUrl] = useState("");
   const [raw, setRaw] = useState(null);
-
   const [rawText, setRawText] = useState("");
-const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
+  const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
 
   useEffect(() => {
     (async () => {
@@ -98,7 +91,7 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
 
   const filtered = useMemo(() => results, [results]);
 
-    async function handleSearch(e) {
+  async function handleSearch(e) {
     e.preventDefault();
 
     setSelected(null);
@@ -129,7 +122,6 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
       const contentType = res.headers.get("content-type") || "";
       setHttpInfo({ status: res.status, contentType });
 
-      // ✅ Leggiamo SEMPRE il body come testo
       const text = await res.text();
       setRawText(text);
 
@@ -137,25 +129,18 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
         throw new Error(`Errore API: ${res.status} ${text}`);
       }
 
-      // ✅ Proviamo parse JSON
       let data;
       try {
         data = JSON.parse(text);
       } catch {
-        data = text; // non JSON, lo vediamo nel debug
+        data = text;
       }
 
       setRaw(data);
 
-      // ✅ Normalizziamo l’output: se è array ok, se è oggetto proviamo data.results
       let arr = [];
-      if (Array.isArray(data)) {
-        arr = data;
-      } else if (data && typeof data === "object" && Array.isArray(data.results)) {
-        arr = data.results; // caso: backend restituisce {results:[...]}
-      } else {
-        arr = [];
-      }
+      if (Array.isArray(data)) arr = data;
+      else if (data && typeof data === "object" && Array.isArray(data.results)) arr = data.results;
 
       setResults(arr);
     } catch (err) {
@@ -197,7 +182,7 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
       throw new Error(`Errore salvataggio lead: ${res.status} ${text}`);
     }
 
-    return await res.json(); // lead_id
+    return await res.json();
   }
 
   async function markContacted(leadId) {
@@ -215,7 +200,6 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
     return await res.json();
   }
 
-  // ✅ apre WhatsApp con messaggio compilato
   function openWhatsApp(place, messageOverride) {
     const msg = messageOverride ?? draft ?? buildDraft(place, city, category);
     const url = buildWhatsAppUrl(place?.phone, msg);
@@ -248,7 +232,6 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
     }
   }
 
-  // ✅ genera + salva lead + apre WhatsApp
   async function handleGenerateAndOpenWhatsApp(place) {
     setError("");
     setSelected(place);
@@ -261,7 +244,6 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
     try {
       const leadId = await saveLead(place);
       setSelectedLeadId(leadId);
-
       openWhatsApp(place, message);
     } catch (err) {
       setError(err?.message || "Errore salvataggio lead");
@@ -294,9 +276,7 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
             <div className="logo">LB</div>
             <div className="brand-text">
               <div className="brand-title">Local Business Finder</div>
-              <div className="brand-sub">
-                Trova attività e prepara messaggi WhatsApp in 1 click
-              </div>
+              <div className="brand-sub">Trova attività e prepara messaggi WhatsApp in 1 click</div>
             </div>
           </div>
 
@@ -316,8 +296,8 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
             <div className="hero-left">
               <h1>Trova clienti locali, senza stress.</h1>
               <p>
-                Cerca attività per città e categoria, poi genera una bozza WhatsApp
-                professionale e salva il lead per tracciarlo.
+                Cerca attività per città e categoria, poi genera una bozza WhatsApp professionale e salva il lead per
+                tracciarlo.
               </p>
               <div className="hero-kpi">
                 <div className="kpi">
@@ -339,15 +319,12 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
               <div className="hint">
                 <div className="hint-title">Tip rapido</div>
                 <div className="hint-text">
-                  Prova categorie come <b>pizzeria</b>, <b>bar</b>, <b>ristorante</b>,{" "}
-                  <b>hotel</b>.
+                  Prova categorie come <b>pizzeria</b>, <b>bar</b>, <b>ristorante</b>, <b>hotel</b>.
                 </div>
               </div>
               <div className="hint secondary">
                 <div className="hint-title">Workflow</div>
-                <div className="hint-text">
-                  1) Cerca → 2) Genera → 3) WhatsApp → 4) Segna contattato ✅
-                </div>
+                <div className="hint-text">1) Cerca → 2) Genera → 3) WhatsApp → 4) Segna contattato ✅</div>
               </div>
             </div>
           </div>
@@ -368,31 +345,17 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
           <form onSubmit={handleSearch} className="formx">
             <div className="field">
               <label>Città</label>
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Es. Casarano"
-              />
+              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Es. Casarano" />
             </div>
 
             <div className="field">
               <label>Categoria</label>
-              <input
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Es. pizzeria"
-              />
-              <div className="help">
-                Esempi: pizzeria, bar, ristorante, hotel, agenzia immobiliare…
-              </div>
+              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Es. pizzeria" />
+              <div className="help">Esempi: pizzeria, bar, ristorante, hotel, agenzia immobiliare…</div>
             </div>
 
             <label className="checkline">
-              <input
-                type="checkbox"
-                checked={onlyNoSite}
-                onChange={(e) => setOnlyNoSite(e.target.checked)}
-              />
+              <input type="checkbox" checked={onlyNoSite} onChange={(e) => setOnlyNoSite(e.target.checked)} />
               <span>
                 Mostra solo attività <b>senza sito</b>
               </span>
@@ -444,45 +407,27 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
                   <tr key={x.place_id}>
                     <td>
                       <div className="name">{x.name}</div>
-                      <div className="sub">
-                        {x.address || "Indirizzo non disponibile"}
-                      </div>
+                      <div className="sub">{x.address || "Indirizzo non disponibile"}</div>
                     </td>
 
-                    <td className="mono">
-                      {x.phone ?? <span className="muted">Non disponibile</span>}
-                    </td>
+                    <td className="mono">{x.phone ?? <span className="muted">Non disponibile</span>}</td>
 
                     <td>
                       <span className="badge">{x.rating ?? "n.d."}</span>
                     </td>
 
-                    <td>
-                      {x.website ? (
-                        <span className="chip ok">🌐 Sito</span>
-                      ) : (
-                        <span className="chip bad">🚫 No sito</span>
-                      )}
-                    </td>
+                    <td>{x.website ? <span className="chip ok">🌐 Sito</span> : <span className="chip bad">🚫 No sito</span>}</td>
 
                     <td className="right">
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button
-                          className="btnx ghost"
-                          disabled={savingLead}
-                          onClick={() => handleGenerateMessage(x)}
-                        >
+                        <button className="btnx ghost" disabled={savingLead} onClick={() => handleGenerateMessage(x)}>
                           {savingLead ? "Salvo…" : "✍️ Genera"}
                         </button>
 
                         <button
                           className="btnx success"
                           disabled={savingLead || !x.phone}
-                          title={
-                            !x.phone
-                              ? "Telefono non disponibile"
-                              : "Apri WhatsApp con messaggio pronto"
-                          }
+                          title={!x.phone ? "Telefono non disponibile" : "Apri WhatsApp con messaggio pronto"}
                           onClick={() => handleGenerateAndOpenWhatsApp(x)}
                         >
                           💬 WhatsApp
@@ -504,62 +449,68 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
           </div>
 
           {/* ✅ DEBUG PANEL */}
-         <div style={{ padding: "12px 14px 0" }}>
-  <div className="alertx warn">
-    <div style={{ fontWeight: 800, marginBottom: 6 }}>DEBUG</div>
+          {DEBUG && (
+            <div style={{ padding: "12px 14px 0" }}>
+              <div className="alertx warn">
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>DEBUG</div>
 
-    <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>
-      <div><b>Last URL:</b> {lastUrl || "—"}</div>
-      <div><b>HTTP status:</b> {httpInfo.status ?? "—"}</div>
-      <div><b>Content-Type:</b> {httpInfo.contentType || "—"}</div>
-      <div><b>results.length:</b> {results.length}</div>
-      <div>
-        <b>raw type:</b>{" "}
-        {raw === null ? "null" : Array.isArray(raw) ? "array" : typeof raw}
-      </div>
-    </div>
+                <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>
+                  <div>
+                    <b>Last URL:</b> {lastUrl || "—"}
+                  </div>
+                  <div>
+                    <b>HTTP status:</b> {httpInfo.status ?? "—"}
+                  </div>
+                  <div>
+                    <b>Content-Type:</b> {httpInfo.contentType || "—"}
+                  </div>
+                  <div>
+                    <b>results.length:</b> {results.length}
+                  </div>
+                  <div>
+                    <b>raw type:</b> {raw === null ? "null" : Array.isArray(raw) ? "array" : typeof raw}
+                  </div>
+                </div>
 
-    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-      RAW TEXT (risposta server)
-    </div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>RAW TEXT (risposta server)</div>
 
-    <pre
-      style={{
-        margin: "0 0 8px 0",
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-        fontSize: 12,
-        opacity: 0.9,
-        maxHeight: 200,
-        overflow: "auto",
-        background: "#111",
-        color: "#0f0",
-        padding: 8,
-        borderRadius: 6,
-      }}
-    >
-{rawText || "—"}
-    </pre>
+                <pre
+                  style={{
+                    margin: "0 0 8px 0",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontSize: 12,
+                    opacity: 0.9,
+                    maxHeight: 200,
+                    overflow: "auto",
+                    background: "#111",
+                    color: "#0f0",
+                    padding: 8,
+                    borderRadius: 6,
+                  }}
+                >
+                  {rawText || "—"}
+                </pre>
 
-    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-      PARSED JSON
-    </div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>PARSED JSON</div>
 
-    <pre
-      style={{
-        margin: 0,
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-        fontSize: 12,
-        opacity: 0.9,
-        maxHeight: 200,
-        overflow: "auto",
-      }}
-    >
-{raw === null ? "—" : JSON.stringify(raw, null, 2)}
-    </pre>
-  </div>
-</div>
+                <pre
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontSize: 12,
+                    opacity: 0.9,
+                    maxHeight: 200,
+                    overflow: "auto",
+                  }}
+                >
+                  {raw === null ? "—" : JSON.stringify(raw, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {/* DRAFT */}
           <div className="divider" />
 
@@ -589,38 +540,22 @@ const [httpInfo, setHttpInfo] = useState({ status: null, contentType: "" });
           />
 
           <div className="actions">
-            <button
-              className="btnx success"
-              disabled={!draft.trim()}
-              onClick={() => copyToClipboard(draft)}
-            >
+            <button className="btnx success" disabled={!draft.trim()} onClick={() => copyToClipboard(draft)}>
               ✅ Copia
             </button>
 
-            <button
-              className="btnx ghost"
-              disabled={!draft.trim()}
-              onClick={() => setDraft("")}
-            >
+            <button className="btnx ghost" disabled={!draft.trim()} onClick={() => setDraft("")}>
               🧹 Svuota
             </button>
 
-            <button
-              className="btnx dark"
-              disabled={!selectedLeadId || marking}
-              onClick={handleMarkContacted}
-            >
+            <button className="btnx dark" disabled={!selectedLeadId || marking} onClick={handleMarkContacted}>
               {marking ? "⏳ Aggiorno…" : "📌 Segna contattato"}
             </button>
 
             <button
               className="btnx success"
               disabled={!selected || !selected.phone}
-              title={
-                !selected?.phone
-                  ? "Seleziona un’attività con telefono"
-                  : "Apri WhatsApp con il testo attuale"
-              }
+              title={!selected?.phone ? "Seleziona un’attività con telefono" : "Apri WhatsApp con il testo attuale"}
               onClick={() => openWhatsApp(selected)}
             >
               💬 Apri WhatsApp
